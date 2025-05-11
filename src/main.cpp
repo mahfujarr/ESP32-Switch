@@ -1,15 +1,19 @@
-#include "WiFi.h"
-#include "ESPAsyncWebServer.h"
-#include "SPIFFS.h"
+#include <WiFi.h>
+#include <ESPAsyncWebServer.h>
+#include <SPIFFS.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <ESPmDNS.h>
 
 #define RELAY_NO true
 #define NUM_RELAYS 4
+#define DEBOUNCE_DELAY 300
 
 int relayGPIOs[NUM_RELAYS] = {26, 27, 25, 33};
 int relayStates[NUM_RELAYS] = {0, 0, 0, 0};
+int buttonGPIOs[NUM_RELAYS] = {16, 17, 5, 18};
+unsigned long lastButtonPress[NUM_RELAYS] = {0};
+
 int gpio2State = 0;
 
 const char *ssid = "espSwitch";
@@ -19,19 +23,27 @@ const char *hostname = "switch";
 AsyncWebServer server(80);
 Preferences preferences;
 
-void setup()
-{
+void toggleRelay(int index) {
+    relayStates[index] = !relayStates[index];
+    digitalWrite(relayGPIOs[index], RELAY_NO ? !relayStates[index] : relayStates[index]);
+
+    preferences.begin("relayStates", false);
+    preferences.putInt(String(index).c_str(), relayStates[index]);
+    preferences.end();
+
+    Serial.printf("Relay %d toggled\n", index + 1);
+}
+
+void setup() {
     Serial.begin(115200);
 
-    if (!SPIFFS.begin(true))
-    {
-        Serial.println("An error occurred while mounting SPIFFS");
+    if (!SPIFFS.begin(true)) {
+        Serial.println("SPIFFS mount failed");
         return;
     }
 
     preferences.begin("relayStates", true);
-    for (int i = 0; i < NUM_RELAYS; i++)
-    {
+    for (int i = 0; i < NUM_RELAYS; i++) {
         pinMode(relayGPIOs[i], OUTPUT);
         relayStates[i] = preferences.getInt(String(i).c_str(), 0);
         digitalWrite(relayGPIOs[i], RELAY_NO ? !relayStates[i] : relayStates[i]);
@@ -42,50 +54,39 @@ void setup()
     gpio2State = 0;
     digitalWrite(2, gpio2State);
 
+    for (int i = 0; i < NUM_RELAYS; i++) {
+        pinMode(buttonGPIOs[i], INPUT_PULLUP);
+    }
+
     WiFi.softAP(ssid, password);
     Serial.println("Access Point created");
-    Serial.print("IP Address: ");
     Serial.println(WiFi.softAPIP());
 
-    if (!MDNS.begin(hostname))
-    {
-        Serial.println("Error starting mDNS");
-        return;
+    if (MDNS.begin(hostname)) {
+        Serial.printf("mDNS started: http://%s.local\n", hostname);
+    } else {
+        Serial.println("mDNS failed");
     }
-    Serial.printf("mDNS responder started: http://%s.local\n", hostname);
 
     server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
 
-    server.on("/update", HTTP_GET, [](AsyncWebServerRequest *request)
-              {
-        if (request->hasParam("relay") && request->hasParam("state"))
-        {
-            String inputMessage = request->getParam("relay")->value();
-            String inputMessage2 = request->getParam("state")->value();
+    server.on("/update", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (request->hasParam("relay") && request->hasParam("state")) {
+            String relayParam = request->getParam("relay")->value();
+            String stateParam = request->getParam("state")->value();
+            int state = stateParam.toInt();
 
-            if (inputMessage == "gpio2")
-            {
-                int state = inputMessage2.toInt();
-                if (state == 0 || state == 1)
-                {
+            if (relayParam == "gpio2") {
+                if (state == 0 || state == 1) {
                     digitalWrite(2, state);
                     gpio2State = state;
                     Serial.printf("GPIO2 set to %d\n", state);
                 }
-                else
-                {
-                    Serial.println("Invalid state for GPIO2");
-                }
-            }
-            else
-            {
-                int relayIndex = inputMessage.toInt() - 1;
-                int state = inputMessage2.toInt();
-
-                if (relayIndex >= 0 && relayIndex < NUM_RELAYS && (state == 0 || state == 1))
-                {
-                    digitalWrite(relayGPIOs[relayIndex], RELAY_NO ? !state : state);
+            } else {
+                int relayIndex = relayParam.toInt() - 1;
+                if (relayIndex >= 0 && relayIndex < NUM_RELAYS && (state == 0 || state == 1)) {
                     relayStates[relayIndex] = state;
+                    digitalWrite(relayGPIOs[relayIndex], RELAY_NO ? !state : state);
 
                     preferences.begin("relayStates", false);
                     preferences.putInt(String(relayIndex).c_str(), state);
@@ -93,35 +94,32 @@ void setup()
 
                     Serial.printf("Relay %d set to %d\n", relayIndex + 1, state);
                 }
-                else
-                {
-                    Serial.println("Invalid relay index or state");
-                }
             }
         }
-        else
-        {
-            Serial.println("Missing parameters: relay or state");
-        }
+        request->send(200, "text/plain", "OK");
+    });
 
-        request->send(200, "text/plain", "OK"); });
-
-    server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request)
-              {
+    server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request) {
         JsonDocument json;
-        for (int i = 0; i < NUM_RELAYS; i++)
-        {
+        for (int i = 0; i < NUM_RELAYS; i++) {
             json[String(i + 1)] = relayStates[i];
         }
         json["gpio2"] = gpio2State;
 
-        String jsonString;
-        serializeJson(json, jsonString);
-        request->send(200, "application/json", jsonString); });
+        String response;
+        serializeJson(json, response);
+        request->send(200, "application/json", response);
+    });
 
     server.begin();
 }
 
-void loop()
-{
+void loop() {
+    unsigned long now = millis();
+    for (int i = 0; i < NUM_RELAYS; i++) {
+        if (digitalRead(buttonGPIOs[i]) == LOW && now - lastButtonPress[i] > DEBOUNCE_DELAY) {
+            toggleRelay(i);
+            lastButtonPress[i] = now;
+        }
+    }
 }

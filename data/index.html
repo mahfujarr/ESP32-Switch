@@ -1,0 +1,109 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <h2>Switch Board</h2>
+    <div class="grid-container fade-in">
+        <div>
+            <h4>Relay #1 - GPIO 26</h4>
+            <label class="switch"><input type="checkbox" onchange="toggleCheckbox(this)" id="1"><span
+                    class="slider"></span></label>
+        </div>
+        <div>
+            <h4>Relay #2 - GPIO 27</h4>
+            <label class="switch"><input type="checkbox" onchange="toggleCheckbox(this)" id="2"><span
+                    class="slider"></span></label>
+        </div>
+        <div>
+            <h4>Relay #3 - GPIO 25</h4>
+            <label class="switch"><input type="checkbox" onchange="toggleCheckbox(this)" id="3"><span
+                    class="slider"></span></label>
+        </div>
+        <div>
+            <h4>Relay #4 - GPIO 33</h4>
+            <label class="switch"><input type="checkbox" onchange="toggleCheckbox(this)" id="4"><span
+                    class="slider"></span></label>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <button onclick="openModal()"
+        style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 1.5rem;">⚙️</button>
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3>Settings</h3>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin: 10px 0;">
+                <h4 style="margin: 0;">D2 LED STATE</h4>
+                <label class="settings-switch"><input type="checkbox" onchange="toggleGPIO2(this)" id="gpio2"><span
+                        class="settings-slider"></span></label>
+            </div>
+        </div>
+    </div>
+    <div class="fade-in" style="margin-top: auto; text-align: center;"">
+        <p style=" margin-top: 100px;">
+        </p>
+        <h4>Created with ❤️ by</h4>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px;">
+            <p style="font-size: 1rem; margin: 0;">Mahfujar
+                Rahman</p>
+            <p style="font-size: 1rem; margin: 0;">Md.
+                Sakib</p>
+            <p style="font-size: 1rem; margin: 0;">Umma
+                Sara</p>
+            <p style="font-size: 1rem; margin: 0;">Fariha
+                Shahrin</p>
+        </div>
+    </div>
+
+    <script>
+        // Fetch relay states from the ESP32 and update the switches
+        fetch('/status')
+            .then(response => response.json())
+            .then(data => {
+                for (let relay in data) {
+                    const checkbox = document.getElementById(relay);
+                    if (checkbox) {
+                        checkbox.checked = data[relay] === 1; // Update switch state
+                    }
+                }
+            })
+            .catch(error => console.error('Error fetching relay states:', error));
+
+        function toggleCheckbox(element) {
+            var xhr = new XMLHttpRequest();
+            if (element.checked) {
+                xhr.open("GET", "/update?relay=" + element.id + "&state=1", true);
+            } else {
+                xhr.open("GET", "/update?relay=" + element.id + "&state=0", true);
+            }
+            xhr.send();
+        }
+
+        function toggleGPIO2(element) {
+            var xhr = new XMLHttpRequest();
+            if (element.checked) {
+                xhr.open("GET", "/update?relay=gpio2&state=1", true);
+            } else {
+                xhr.open("GET", "/update?relay=gpio2&state=0", true);
+            }
+            xhr.send();
+        }
+
+        function openModal() {
+            document.getElementById("settingsModal").style.display = "block";
+        }
+
+        function closeModal() {
+            document.getElementById("settingsModal").style.display = "none";
+        }
+    </script>
+</body>
+
+</html>

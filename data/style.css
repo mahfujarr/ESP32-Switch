@@ -1,0 +1,170 @@
+html {
+  font-family: Arial;
+  display: inline-block;
+  text-align: center;
+}
+
+h2 {
+  font-size: 3rem;
+}
+
+p {
+  font-size: 3rem;
+}
+
+body {
+  max-width: 600px;
+  margin: 0px auto;
+  padding-bottom: 25px;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  justify-items: center;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 120px;
+  height: 68px;
+}
+
+.switch input {
+  display: none;
+}
+
+.slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ff4d4d;
+  border-radius: 34px;
+  transition: background-color 0.4s ease;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 52px;
+  width: 52px;
+  left: 8px;
+  bottom: 8px;
+  background-color: #fff;
+  transition: transform 0.4s ease, background-color 0.4s ease;
+  border-radius: 68px;
+}
+
+input:checked + .slider {
+  background-color: #4caf50;
+}
+
+input:checked + .slider:before {
+  transform: translateX(52px);
+  background-color: #fff;
+}
+
+.slider:hover:before {
+  background-color: #d6f08f;
+}
+
+:checked + .slider:hover:before {
+  background-color: #d6f08f;
+}
+
+.fade-in {
+  animation: fadeIn 1s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+  text-align: center;
+  border-radius: 20px;
+}
+
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 35px;
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.settings-switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 34px;
+}
+
+.settings-switch input {
+  display: none;
+}
+
+.settings-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  border-radius: 34px;
+  transition: background-color 0.4s ease;
+}
+
+.settings-slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: transform 0.4s ease;
+  border-radius: 50%;
+}
+
+input:checked + .settings-slider {
+  background-color: #4caf50;
+}
+
+input:checked + .settings-slider:before {
+  transform: translateX(26px);
+}

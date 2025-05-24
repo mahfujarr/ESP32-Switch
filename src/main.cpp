@@ -8,13 +8,14 @@
 
 #define RELAY_NO true
 #define NUM_RELAYS 4
-#define DEBOUNCE_DELAY 300
+#define DEBOUNCE_DELAY 1000
 #define IR_RECEIVE_PIN 4
 
 int relayGPIOs[NUM_RELAYS] = {26, 27, 25, 33};
 int relayStates[NUM_RELAYS] = {0, 0, 0, 0};
 int buttonGPIOs[NUM_RELAYS] = {16, 17, 5, 18};
 unsigned long lastButtonPress[NUM_RELAYS] = {0};
+bool lastButtonState[NUM_RELAYS] = {HIGH, HIGH, HIGH, HIGH};
 
 int gpio2State = 0;
 
@@ -138,15 +139,15 @@ void setup()
 void loop()
 {
     unsigned long now = millis();
-
-    // Button input handling with debounce
     for (int i = 0; i < NUM_RELAYS; i++)
     {
-        if (digitalRead(buttonGPIOs[i]) == LOW && now - lastButtonPress[i] > DEBOUNCE_DELAY)
+        bool currentState = digitalRead(buttonGPIOs[i]);
+        if (lastButtonState[i] == HIGH && currentState == LOW && now - lastButtonPress[i] > DEBOUNCE_DELAY)
         {
             toggleRelay(i);
             lastButtonPress[i] = now;
         }
+        lastButtonState[i] = currentState;
     }
 
     // IR remote handling with debounce and repeat filter
